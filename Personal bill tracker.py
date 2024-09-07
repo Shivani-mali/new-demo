@@ -1,0 +1,109 @@
+import tkinter as tk
+from tkinter import ttk
+import pandas as pd
+import matplotlib.pyplot as plt
+from tkinter import messagebox
+from datetime import datetime
+
+# File to store bills
+FILE_NAME = "bills.csv"
+
+# Load existing data if file exists
+def load_data():
+    try:
+        df = pd.read_csv(FILE_NAME)
+        if 'Payment Method' not in df.columns:
+            df['Payment Method'] = ''  # Add column with empty values if it doesn't exist
+        return df
+    except FileNotFoundError:
+        return pd.DataFrame(columns=['Bill Type', 'Due Date', 'Amount', 'Status', 'Payment Method'])
+
+# Function to add a bill
+def add_bill(bill_type, due_date, amount, status, payment_method):
+    df = load_data()
+    new_data = pd.DataFrame([{
+        'Bill Type': bill_type,
+        'Due Date': due_date,
+        'Amount': float(amount),
+        'Status': status,
+        'Payment Method': payment_method
+    }])
+    df = pd.concat([df, new_data], ignore_index=True)
+    df.to_csv(FILE_NAME, index=False)
+    messagebox.showinfo("Success", "Bill added successfully!")
+    update_table()
+
+# Function to update the table in the GUI
+def update_table():
+    for row in table.get_children():
+        table.delete(row)
+
+    df = load_data()
+    for index, row in df.iterrows():
+        table.insert("", "end", values=(row['Bill Type'], row['Due Date'], row['Amount'], row['Status'], row['Payment Method']))
+
+# Function to generate pie chart
+def generate_pie_chart():
+    df = load_data()
+    df.groupby('Status').sum().plot(kind='pie', y='Amount', autopct='%1.1f%%')
+    plt.title("Bills by Status")
+    plt.show()
+
+# Function to generate bar chart
+def generate_bar_chart():
+    df = load_data()
+    df['Due Date'] = pd.to_datetime(df['Due Date'])
+    df.groupby(df['Due Date'].dt.date)['Amount'].sum().plot(kind='bar')
+    plt.title("Daily Bills")
+    plt.show()
+
+# Main application window
+root = tk.Tk()
+root.title("Bill Management")
+
+# Set black background and white font
+label_font = ("Times New Roman", 12)
+root.configure(bg="black")
+
+# GUI elements for adding bill
+tk.Label(root, text="Bill Type", font=label_font, fg="white", bg="black").grid(row=0, column=0)
+tk.Label(root, text="Due Date (YYYY-MM-DD)", font=label_font, fg="white", bg="black").grid(row=1, column=0)
+tk.Label(root, text="Amount", font=label_font, fg="white", bg="black").grid(row=2, column=0)
+tk.Label(root, text="Status (Paid/Unpaid)", font=label_font, fg="white", bg="black").grid(row=3, column=0)
+tk.Label(root, text="Payment Method (Cash/Online)", font=label_font, fg="white", bg="black").grid(row=4, column=0)
+
+bill_type_entry = tk.Entry(root)
+due_date_entry = tk.Entry(root)
+amount_entry = tk.Entry(root)
+status_entry = tk.Entry(root)
+payment_method_entry = tk.Entry(root)
+
+bill_type_entry.grid(row=0, column=1)
+due_date_entry.grid(row=1, column=1)
+amount_entry.grid(row=2, column=1)
+status_entry.grid(row=3, column=1)
+payment_method_entry.grid(row=4, column=1)
+
+# Add Bill Button
+add_button = tk.Button(root, text="Add Bill", command=lambda: add_bill(bill_type_entry.get(), due_date_entry.get(), amount_entry.get(), status_entry.get(), payment_method_entry.get()), font=label_font, fg="white", bg="black")
+add_button.grid(row=5, column=1)
+
+# Table for displaying bills
+columns = ("Bill Type", "Due Date", "Amount", "Status", "Payment Method")
+table = ttk.Treeview(root, columns=columns, show="headings")
+for col in columns:
+    table.heading(col, text=col)
+
+table.grid(row=6, column=0, columnspan=3)
+
+# Dashboard buttons with black background and white text
+pie_button = tk.Button(root, text="Show Pie Chart", command=generate_pie_chart, font=label_font, fg="white", bg="black")
+bar_button = tk.Button(root, text="Show Bar Chart", command=generate_bar_chart, font=label_font, fg="white", bg="black")
+
+pie_button.grid(row=7, column=0)
+bar_button.grid(row=7, column=1)
+
+# Load data into table when program starts
+update_table()
+
+root.mainloop()
